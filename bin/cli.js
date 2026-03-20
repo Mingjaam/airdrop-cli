@@ -24,6 +24,49 @@ for (let i = 0; i < args.length; i++) {
   else if (!args[i].startsWith('-'))                 servePath = path.resolve(args[i]);
 }
 
+// ── Interactive select ───────────────────────────────
+function select(question, options) {
+  return new Promise(resolve => {
+    let idx = 0;
+
+    function draw() {
+      process.stdout.write('\x1B[2J\x1B[H');
+      console.log('');
+      console.log('  ' + chalk.bold.hex('#818cf8')('◆ ') + chalk.bold.white('my-airdrop'));
+      console.log('');
+      console.log('  ' + chalk.gray(question));
+      console.log('');
+      options.forEach((opt, i) => {
+        const cursor = i === idx ? chalk.hex('#818cf8')('●') : chalk.gray('○');
+        const label  = i === idx ? chalk.white(opt.label) : chalk.gray(opt.label);
+        const desc   = i === idx ? chalk.gray('  ' + opt.desc) : chalk.gray('  ' + opt.desc);
+        console.log('  ' + cursor + '  ' + label + desc);
+      });
+      console.log('');
+      console.log(chalk.gray('  ↑↓ to move  ·  Enter to select'));
+    }
+
+    draw();
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.setEncoding('utf8');
+
+    process.stdin.on('data', function handler(key) {
+      if (key === '\u0003') { process.stdin.setRawMode(false); process.exit(0); }
+      if (key === '\u001B\u005B\u0041' || key === 'k') idx = (idx - 1 + options.length) % options.length; // up
+      if (key === '\u001B\u005B\u0042' || key === 'j') idx = (idx + 1) % options.length;                  // down
+      if (key === '\r' || key === '\n') {
+        process.stdin.removeListener('data', handler);
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+        resolve(options[idx].value);
+        return;
+      }
+      draw();
+    });
+  });
+}
+
 if (!fs.existsSync(servePath) || !fs.statSync(servePath).isDirectory()) {
   console.error(chalk.red('  Not a directory: ' + servePath));
   process.exit(1);
@@ -85,6 +128,14 @@ function getLocalIP() {
 
 // ── Main ─────────────────────────────────────────────
 async function main() {
+  // Interactive mode if no flags given
+  if (process.stdin.isTTY && !args.some(a => a.startsWith('--'))) {
+    usePublic = await select('How do you want to share?', [
+      { label: 'Local',  desc: '— same WiFi only',          value: false },
+      { label: 'Public', desc: '— accessible from anywhere', value: true  },
+    ]);
+  }
+
   const { count, size } = quickScan(servePath);
 
   // Hard limit
