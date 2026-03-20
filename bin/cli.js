@@ -6,17 +6,20 @@ const os   = require('os');
 const fs   = require('fs');
 const chalk = require('chalk');
 const qrcode = require('qrcode-terminal');
+const localtunnel = require('localtunnel');
 const { createServer } = require('../src/server');
 
 // ── Parse args ───────────────────────────────────────
 const args = process.argv.slice(2);
-let servePath  = process.cwd();
-let port       = 3000;
+let servePath   = process.cwd();
+let port        = 3000;
 let allowUpload = true;
+let usePublic   = false;
 
 for (let i = 0; i < args.length; i++) {
   if      (args[i] === '--port' || args[i] === '-p') port = parseInt(args[++i]) || 3000;
   else if (args[i] === '--no-upload')                allowUpload = false;
+  else if (args[i] === '--public')                   usePublic = true;
   else if (!args[i].startsWith('-'))                 servePath = path.resolve(args[i]);
 }
 
@@ -139,7 +142,7 @@ async function main() {
     console.log(`  ${chalk.gray(time)}  ${arrow}  ${chalk.gray(ip.padEnd(15))}  ${label}${sizeStr}`);
   });
 
-  server.listen(port, '0.0.0.0', () => {
+  server.listen(port, '0.0.0.0', async () => {
     console.clear();
     console.log('');
     console.log('  ' + chalk.bold.hex('#818cf8')('◆ ') + chalk.bold.white('my-airdrop'));
@@ -148,14 +151,36 @@ async function main() {
     console.log('');
     console.log('  ' + chalk.gray('Local    ') + chalk.white(localURL));
     console.log('  ' + chalk.gray('Network  ') + chalk.bold.white(networkURL));
-    console.log('');
 
-    qrcode.generate(networkURL, { small: true }, qr => {
+    // Public tunnel
+    let publicURL = null;
+    if (usePublic) {
+      process.stdout.write('  ' + chalk.gray('Public   ') + chalk.gray('connecting...'));
+      try {
+        const tunnel = await localtunnel({ port });
+        publicURL = tunnel.url;
+        process.stdout.write('\r  ' + chalk.gray('Public   ') + chalk.bold.cyan(publicURL) + '\n');
+        tunnel.on('close', () => {
+          console.log('\n' + chalk.yellow('  ⚠  Public tunnel closed'));
+        });
+      } catch {
+        process.stdout.write('\r  ' + chalk.yellow('Public   tunnel failed (no internet?)') + '\n');
+      }
+    }
+
+    console.log('');
+    const qrURL = publicURL || networkURL;
+    qrcode.generate(qrURL, { small: true }, qr => {
       qr.split('\n').forEach(line => console.log('  ' + line));
     });
 
     console.log('');
-    console.log(chalk.gray('  Scan QR or open the Network URL on any device'));
+    if (publicURL) {
+      console.log(chalk.gray('  QR → public URL (works outside local network)'));
+    } else {
+      console.log(chalk.gray('  Scan QR or open the Network URL on any device'));
+      console.log(chalk.gray('  Use ') + chalk.white('--public') + chalk.gray(' to share outside local network'));
+    }
     if (!allowUpload) console.log(chalk.gray('  ⊘  Upload disabled (read-only)'));
     console.log(chalk.gray('  Ctrl+C to stop'));
     console.log('');
