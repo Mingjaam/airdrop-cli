@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>airdrop-cli</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;
+  --border:#252525;--text:#f0f0f0;--muted:#555;
+  --accent:#818cf8;--accent-bg:rgba(129,140,248,.12);
+  --green:#4ade80;--red:#ef4444;--yellow:#facc15;
+}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;
+  font-size:15px;display:flex;flex-direction:column;
+}
+
+/* ── Header ── */
+#header{
+  flex-shrink:0;
+  background:rgba(13,13,13,.95);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:10px 14px 8px;
+}
+.brand{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.05em;margin-bottom:5px}
+#breadcrumb{
+  display:flex;align-items:center;gap:2px;
+  font-size:13px;color:var(--muted);
+  overflow-x:auto;white-space:nowrap;scrollbar-width:none;
+}
+#breadcrumb::-webkit-scrollbar{display:none}
+.bc{cursor:pointer;padding:2px 5px;border-radius:4px;transition:color .1s}
+.bc:hover,.bc.cur{color:var(--text)}
+.bc-sep{color:var(--border);font-size:11px;padding:0 1px}
+
+/* ── Toolbar ── */
+#toolbar{
+  flex-shrink:0;display:flex;align-items:center;gap:6px;
+  padding:7px 10px;border-bottom:1px solid var(--border);
+  overflow-x:auto;scrollbar-width:none;background:var(--bg);
+}
+#toolbar::-webkit-scrollbar{display:none}
+.btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 12px;font-size:13px;font-weight:500;
+  border:1px solid var(--border);background:var(--surface2);
+  color:var(--text);border-radius:6px;cursor:pointer;
+  white-space:nowrap;transition:border-color .15s,color .15s,background .15s;
+  flex-shrink:0;line-height:1;
+}
+.btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.3;cursor:default}
+.btn.accent{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.btn.accent:hover:not(:disabled){background:rgba(129,140,248,.2)}
+
+/* ── File list ── */
+#scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px}
+.file-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 10px;border-radius:8px;
+  cursor:pointer;transition:background .1s;
+  -webkit-user-select:none;user-select:none;
+}
+.file-row:active,.file-row:hover{background:var(--surface)}
+.file-row.sel{background:var(--accent-bg)}
+.file-cb{
+  width:17px;height:17px;flex-shrink:0;
+  accent-color:var(--accent);cursor:pointer;
+  display:none;border-radius:4px;
+}
+.sel-mode .file-cb{display:block}
+.file-icon{font-size:22px;flex-shrink:0;width:30px;text-align:center}
+.file-body{flex:1;min-width:0}
+.file-name{
+  font-size:14px;font-weight:500;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.file-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.file-btns{display:flex;gap:3px;flex-shrink:0}
+.icon-btn{
+  width:30px;height:30px;display:flex;
+  align-items:center;justify-content:center;
+  border-radius:6px;border:1px solid transparent;
+  background:transparent;color:var(--muted);
+  cursor:pointer;font-size:15px;transition:all .15s;
+}
+.icon-btn:hover{border-color:var(--border);background:var(--surface2);color:var(--text)}
+
+/* ── FAB ── */
+#fab{
+  position:fixed;bottom:22px;right:18px;
+  width:52px;height:52px;border-radius:50%;
+  background:var(--accent);color:#fff;font-size:22px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border:none;z-index:100;
+  box-shadow:0 4px 18px rgba(129,140,248,.45);
+  transition:transform .15s,box-shadow .15s;
+}
+#fab:active{transform:scale(.95)}
+@media(min-width:640px){#fab{display:none}}
+.no-mobile{display:none}
+@media(min-width:640px){.no-mobile{display:inline-flex}}
+
+/* ── Upload overlay ── */
+#upOverlay{
+  position:fixed;bottom:18px;right:18px;
+  width:290px;max-width:calc(100vw - 24px);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:14px;z-index:200;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);
+}
+#upOverlay.hidden{display:none}
+.up-head{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.up-item{margin-bottom:8px}
+.up-item:last-child{margin-bottom:0}
+.up-name{font-size:13px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbar{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.pfill{height:100%;background:var(--accent);border-radius:2px;transition:width .15s}
+.up-item.done .pfill{background:var(--green)}
+.up-item.err .pfill{background:var(--red)}
+
+/* ── Drop overlay ── */
+#dropOverlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(129,140,248,.07);
+  border:2px dashed var(--accent);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;
+  pointer-events:none;opacity:0;transition:opacity .15s;
+}
+#dropOverlay.show{opacity:1}
+.drop-icon{font-size:52px}
+.drop-label{font-size:17px;font-weight:700;color:var(--accent)}
+
+/* ── State messages ── */
+.state{
+  text-align:center;padding:64px 20px;
+  color:var(--muted);font-size:14px;
+}
+.spin-wrap{
+  display:flex;align-items:center;justify-content:center;
+  gap:10px;padding:48px;color:var(--muted);font-size:14px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{
+  width:18px;height:18px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .6s linear infinite;
+}
+
+/* ── Toasts ── */
+#toasts{
+  position:fixed;bottom:22px;left:50%;
+  transform:translateX(-50%);
+  z-index:400;display:flex;flex-direction:column-reverse;
+  align-items:center;gap:6px;pointer-events:none;
+}
+.toast{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;padding:8px 14px;
+  font-size:13px;white-space:nowrap;
+  animation:fadeUp .2s ease;
+}
+.toast.ok{border-color:var(--green);color:var(--green)}
+.toast.err{border-color:var(--red);color:var(--red)}
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+@media(max-width:639px){
+  .file-row{min-height:52px}
+  .file-name{font-size:15px}
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="brand">◆ airdrop-cli</div>
+  <div id="breadcrumb"></div>
+</div>
+
+<div id="toolbar">
+  <label class="btn accent no-mobile" style="cursor:pointer">
+    ↑ Upload
+    <input id="fileInput" type="file" multiple hidden>
+  </label>
+  <button class="btn" id="selAllBtn">Select All</button>
+  <button class="btn accent" id="dlSelBtn" disabled>↓ <span id="selLabel">Download</span></button>
+  <button class="btn no-mobile" id="zipBtn">⊡ Zip Folder</button>
+</div>
+
+<div id="scroll"><div id="fileList"></div></div>
+
+<!-- Mobile FAB -->
+<label id="fab" title="Upload">
+  ↑
+  <input id="fabInput" type="file" multiple hidden>
+</label>
+
+<!-- Upload progress -->
+<div id="upOverlay" class="hidden">
+  <div class="up-head">Uploading</div>
+  <div id="upItems"></div>
+</div>
+
+<!-- Drop overlay -->
+<div id="dropOverlay">
+  <div class="drop-icon">📤</div>
+  <div class="drop-label">Drop to upload</div>
+</div>
+
+<!-- Toasts -->
+<div id="toasts"></div>
+
+<script>
+'use strict';
+
+let curPath = '/';
+const sel = new Set();
+
+// ── API ──────────────────────────────────────────────
+
+async function apiList(p) {
+  const r = await fetch('/api/ls?p=' + enc(p));
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── Navigation ───────────────────────────────────────
+
+async function go(p) {
+  curPath = p;
+  sel.clear();
+  syncSel();
+  setLoading();
+  renderBC(p);
+  try {
+    const { items } = await apiList(p);
+    renderFiles(items);
+  } catch (e) {
+    document.getElementById('fileList').innerHTML =
+      '<div class="state">Could not load — ' + esc(e.message) + '</div>';
+  }
+}
+
+function setLoading() {
+  document.getElementById('fileList').innerHTML =
+    '<div class="spin-wrap"><div class="spin"></div>Loading…</div>';
+}
+
+function renderBC(p) {
+  const parts = p.split('/').filter(Boolean);
+  const bc = document.getElementById('breadcrumb');
+  let h = `<span class="bc${!parts.length?' cur':''}" data-path="/">~</span>`;
+  parts.forEach((seg, i) => {
+    const pp = '/' + parts.slice(0, i + 1).join('/');
+    h += '<span class="bc-sep">/</span>';
+    h += `<span class="bc${i===parts.length-1?' cur':''}" data-path="${attr(pp)}">${esc(seg)}</span>`;
+  });
+  bc.innerHTML = h;
+  bc.scrollLeft = bc.scrollWidth;
+}
+
+function renderFiles(items) {
+  const list = document.getElementById('fileList');
+  if (!items.length) {
+    list.innerHTML = '<div class="state">Empty folder</div>';
+    return;
+  }
+  list.innerHTML = items.map(item => {
+    const p = (curPath === '/' ? '' : curPath) + '/' + item.name;
+    const isSel = sel.has(p);
+    return `<div class="file-row${isSel?' sel':''}" data-path="${attr(p)}" data-type="${item.type}">
+      <input class="file-cb" type="checkbox"${isSel?' checked':''} data-path="${attr(p)}">
+      <div class="file-icon">${icon(item.name, item.type)}</div>
+      <div class="file-body">
+        <div class="file-name">${esc(item.name)}${item.type==='dir'?'/':''}</div>
+        ${item.size!=null?`<div class="file-meta">${fmtSize(item.size)}</div>`:''}
+      </div>
+      <div class="file-btns">
+        ${item.type==='dir'
+          ? `<button class="icon-btn" data-act="zip" data-path="${attr(p)}" title="Download ZIP">⊡</button>`
+          : `<button class="icon-btn" data-act="dl"  data-path="${attr(p)}" title="Download">↓</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── File list events ─────────────────────────────────
+
+document.getElementById('fileList').addEventListener('click', e => {
+  const btn = e.target.closest('.icon-btn');
+  if (btn) {
+    e.stopPropagation();
+    if (btn.dataset.act === 'dl') dlFile(btn.dataset.path);
+    if (btn.dataset.act === 'zip') dlZip(btn.dataset.path);
+    return;
+  }
+  const cb = e.target.closest('.file-cb');
+  if (cb) { toggleSel(cb.dataset.path); return; }
+
+  const row = e.target.closest('.file-row');
+  if (!row) return;
+  if (sel.size > 0) { toggleSel(row.dataset.path); return; }
+  if (row.dataset.type === 'dir') go(row.dataset.path);
+  else dlFile(row.dataset.path);
+});
+
+document.getElementById('breadcrumb').addEventListener('click', e => {
+  const bc = e.target.closest('.bc');
+  if (bc) go(bc.dataset.path);
+});
+
+// ── Selection ────────────────────────────────────────
+
+function toggleSel(p) {
+  sel.has(p) ? sel.delete(p) : sel.add(p);
+  const row = findRow(p);
+  if (row) {
+    row.classList.toggle('sel', sel.has(p));
+    const cb = row.querySelector('.file-cb');
+    if (cb) cb.checked = sel.has(p);
+  }
+  syncSel();
+}
+
+function syncSel() {
+  const n = sel.size;
+  document.getElementById('dlSelBtn').disabled = n === 0;
+  document.getElementById('selLabel').textContent = n > 0 ? `Download (${n})` : 'Download';
+  document.getElementById('fileList').classList.toggle('sel-mode', n > 0);
+}
+
+document.getElementById('selAllBtn').addEventListener('click', () => {
+  const rows = [...document.querySelectorAll('.file-row')];
+  if (sel.size === rows.length) {
+    sel.clear();
+    rows.forEach(r => {
+      r.classList.remove('sel');
+      const cb = r.querySelector('.file-cb'); if (cb) cb.checked = false;
+    });
+  } else {
+    rows.forEach(r => {
+      sel.add(r.dataset.path);
+      r.classList.add('sel');
+      const cb = r.querySelector('.file-cb'); if (cb) cb.checked = true;
+    });
+  }
+  syncSel();
+});
+
+// ── Download ─────────────────────────────────────────
+
+function dlFile(p) { window.location.href = '/api/dl?p=' + enc(p); }
+function dlZip(p)  { window.location.href = '/api/zip?p=' + enc(p); }
+
+document.getElementById('dlSelBtn').addEventListener('click', async () => {
+  if (!sel.size) return;
+  if (sel.size === 1) {
+    const [p] = sel;
+    const row = findRow(p);
+    if (row?.dataset.type === 'file') { dlFile(p); return; }
+    if (row?.dataset.type === 'dir')  { dlZip(p);  return; }
+  }
+  try {
+    const r = await fetch('/api/zip-selected', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths: [...sel] }),
+    });
+    if (!r.ok) throw new Error();
+    const blob = await r.blob();
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob), download: 'selected.zip',
+    });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch { toast('Download failed', 'err'); }
+});
+
+document.getElementById('zipBtn')?.addEventListener('click', () => dlZip(curPath));
+
+// ── Upload ───────────────────────────────────────────
+
+function setupUpload() {
+  const bind = id => {
+    const el = document.getElementById(id);
+    el.addEventListener('change', () => { handleFiles(el.files); el.value = ''; });
+  };
+  bind('fileInput');
+  bind('fabInput');
+
+  // Drag & drop
+  let depth = 0;
+  document.addEventListener('dragenter', e => {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+    depth++;
+    document.getElementById('dropOverlay').classList.add('show');
+  });
+  document.addEventListener('dragleave', () => {
+    if (--depth <= 0) { depth = 0; document.getElementById('dropOverlay').classList.remove('show'); }
+  });
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault(); depth = 0;
+    document.getElementById('dropOverlay').classList.remove('show');
+    handleFiles(e.dataTransfer?.files);
+  });
+}
+
+function handleFiles(files) {
+  if (!files?.length) return;
+  const arr = [...files];
+  showUpOverlay(arr);
+  Promise.all(arr.map((f, i) => uploadOne(f, i))).then(() => {
+    setTimeout(() => {
+      document.getElementById('upOverlay').classList.add('hidden');
+      go(curPath);
+      toast(`Uploaded ${arr.length} file${arr.length > 1 ? 's' : ''}`, 'ok');
+    }, 700);
+  });
+}
+
+function showUpOverlay(files) {
+  document.getElementById('upOverlay').classList.remove('hidden');
+  document.getElementById('upItems').innerHTML = files.map((f, i) =>
+    `<div class="up-item" id="ui${i}">
+      <div class="up-name">${esc(f.name)}</div>
+      <div class="pbar"><div class="pfill" id="uf${i}" style="width:0"></div></div>
+    </div>`
+  ).join('');
+}
+
+function uploadOne(file, idx) {
+  return new Promise(resolve => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/ul?p=' + enc(curPath));
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const fill = document.getElementById('uf' + idx);
+        if (fill) fill.style.width = Math.round(e.loaded / e.total * 100) + '%';
+      }
+    };
+    xhr.onloadend = () => {
+      const fill = document.getElementById('uf' + idx);
+      if (fill) fill.style.width = '100%';
+      const item = document.getElementById('ui' + idx);
+      if (item) item.classList.add(xhr.status === 200 ? 'done' : 'err');
+      resolve();
+    };
+    xhr.send(fd);
+  });
+}
+
+// ── Toast ─────────────────────────────────────────────
+
+function toast(msg, type = '') {
+  const el = Object.assign(document.createElement('div'), {
+    className: 'toast' + (type ? ' ' + type : ''),
+    textContent: msg,
+  });
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+// ── Helpers ──────────────────────────────────────────
+
+function findRow(p) {
+  return [...document.querySelectorAll('.file-row')].find(r => r.dataset.path === p) || null;
+}
+function enc(p) { return encodeURIComponent(p); }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function attr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function icon(name, type) {
+  if (type === 'dir') return '📁';
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  return {
+    jpg:'🖼️',jpeg:'🖼️',png:'🖼️',gif:'🖼️',webp:'🖼️',heic:'🖼️',bmp:'🖼️',svg:'🖼️',
+    mp4:'🎬',mov:'🎬',avi:'🎬',mkv:'🎬',webm:'🎬',
+    mp3:'🎵',wav:'🎵',m4a:'🎵',flac:'🎵',aac:'🎵',
+    pdf:'📕',doc:'📝',docx:'📝',txt:'📝',md:'📝',
+    js:'💻',ts:'💻',jsx:'💻',tsx:'💻',py:'💻',go:'💻',rs:'💻',
+    html:'💻',css:'💻',json:'💻',sh:'💻',yml:'💻',yaml:'💻',
+    zip:'📦',tar:'📦',gz:'📦',rar:'📦',dmg:'📦',pkg:'📦',
+  }[ext] || '📄';
+}
+
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+  return (b / 1073741824).toFixed(1) + ' GB';
+}
+
+// ── Init ─────────────────────────────────────────────
+setupUpload();
+go('/');
+</script>
+</body>
+</html>
