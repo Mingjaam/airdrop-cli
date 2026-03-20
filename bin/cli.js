@@ -88,7 +88,7 @@ async function main() {
     console.log('');
     console.log('  ' + chalk.red('✖  Directory is too large to serve safely'));
     console.log(chalk.gray(`     ${count.toLocaleString()} files  ·  ${fmtBytes(size)}`));
-    console.log(chalk.gray('     Try specifying a subdirectory: ') + chalk.white('airdrop-cli ./subfolder'));
+    console.log(chalk.gray('     Try specifying a subdirectory: ') + chalk.white('my-airdrop ./subfolder'));
     console.log('');
     process.exit(1);
   }
@@ -142,7 +142,7 @@ async function main() {
   server.listen(port, '0.0.0.0', () => {
     console.clear();
     console.log('');
-    console.log('  ' + chalk.bold.hex('#818cf8')('◆ ') + chalk.bold.white('airdrop-cli'));
+    console.log('  ' + chalk.bold.hex('#818cf8')('◆ ') + chalk.bold.white('my-airdrop'));
     console.log('');
     console.log('  ' + chalk.gray('Serving  ') + chalk.cyan(shortenPath(servePath)));
     console.log('');

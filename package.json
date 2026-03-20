@@ -1,11 +1,11 @@
 {
-  "name": "airdrop-cli",
+  "name": "my-airdrop",
   "version": "1.0.0",
   "description": "Share files over local network — like AirDrop but from your terminal",
   "keywords": ["file-sharing", "airdrop", "local", "network", "cli", "upload", "download"],
   "author": "mingjaam",
   "license": "MIT",
-  "bin": { "airdrop-cli": "bin/cli.js" },
+  "bin": { "my-airdrop": "bin/cli.js" },
   "files": ["bin", "src"],
   "engines": { "node": ">=14.0.0" },
   "dependencies": {
