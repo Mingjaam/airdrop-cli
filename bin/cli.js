@@ -4,6 +4,7 @@
 const path = require('path');
 const os   = require('os');
 const fs   = require('fs');
+const https = require('https');
 const chalk = require('chalk');
 const qrcode = require('qrcode-terminal');
 const localtunnel = require('localtunnel');
@@ -160,6 +161,17 @@ async function main() {
         const tunnel = await localtunnel({ port });
         publicURL = tunnel.url;
         process.stdout.write('\r  ' + chalk.gray('Public   ') + chalk.bold.cyan(publicURL) + '\n');
+
+        // Fetch tunnel password (public IP)
+        https.get('https://loca.lt/mytunnelpassword', res => {
+          let data = '';
+          res.on('data', c => data += c);
+          res.on('end', () => {
+            const pw = data.trim();
+            if (pw) console.log('  ' + chalk.gray('Password ') + chalk.bold.yellow(pw) + chalk.gray('  (share this with visitors)'));
+          });
+        }).on('error', () => {});
+
         tunnel.on('close', () => {
           console.log('\n' + chalk.yellow('  ⚠  Public tunnel closed'));
         });
